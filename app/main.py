@@ -1,26 +1,14 @@
-import google.generativeai as genai
-from google.generativeai import types
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from dotenv import load_dotenv
-import os
 import uuid
 from typing import Optional, Dict, Any
 
-# .env 파일 로드
-load_dotenv()
+# 설정 및 모델 import
+from config import model
+
 app = FastAPI()
 
-# 환경변수에서 API 키 로드
-API_KEY = os.getenv("GEMINI_API_KEY")
-
-if not API_KEY:
-    raise Exception("GEMINI_API_KEY 환경변수가 설정되어야 합니다.")
-
-# API 키로 Gemini 설정
-genai.configure(api_key=API_KEY)
-
-# 채팅 세션을 저장할 딕셔너리 (실제 환경에서는 Redis 등 사용 권장)
+# 채팅 세션을 저장할 딕셔너리
 chat_sessions: Dict[str, Any] = {}
 
 
@@ -34,20 +22,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     sessionId: str
-
-
-# Gemini 모델 설정
-generation_config_dict = {
-    "temperature": 0.7,
-    "max_output_tokens": 8192,
-}
-generation_config = types.GenerationConfig(**generation_config_dict)
-
-model = genai.GenerativeModel(
-    model_name="gemini-2.0-flash-exp",
-    generation_config=generation_config,
-    system_instruction="You are a helpful assistant. Remember the context of our conversation and refer to previous messages when relevant. Always maintain conversation continuity.",
-)
 
 
 def get_or_create_chat_session(session_id: Optional[str] = None):
@@ -115,8 +89,7 @@ async def generate_response_endpoint(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Error calling Gemini API: {e}")
 
 
-# 추가 유틸리티 엔드포인트들
-
+# util endpoints
 @app.get("/api/chatbot/history/{session_id}")
 async def get_chat_history(session_id: str):
     """특정 세션의 대화 히스토리 조회"""
